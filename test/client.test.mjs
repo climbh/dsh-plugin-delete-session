@@ -127,8 +127,14 @@ async function runScenario({ wasMain }) {
   assert.ok(overlay && menu, 'both slots registered');
   assert.equal(menu.options.order, 500, 'row sits below the shipped rows');
   assert.equal(menu.options.locale, 'delete-session', 'row uses the plugin locale namespace');
-  assert.match(document.tags[0]?.textContent ?? '', /\.dshds-row/, 'styles injected');
-  assert.match(document.tags[0]?.textContent ?? '', /var\(--dsw-alias-state-error-primary\)/, 'tones come from theme tokens');
+  const css = document.tags[0]?.textContent ?? '';
+  assert.match(css, /\.dshds-item/, 'styles injected');
+  assert.match(css, /var\(--dsw-alias-state-error-primary\)/, 'tones come from theme tokens');
+  assert.match(css, /background: var\(--dsw-alias-bg-mask-1\)/, 'dialog mask matches the shipped modal');
+  assert.match(css, /backdrop-filter: var\(--dsw-mask-blur\)/, 'dialog mask blurs like the shipped modal');
+  assert.match(css, /border-radius: var\(--dsw-radius-panel\)/, 'panel radius matches the shipped modal');
+  assert.match(css, /min-height: 34px/, 'row height matches the shipped menu item');
+  assert.match(css, /height: 36px/, 'buttons match the shipped outline button');
 
   let menuOpen = true;
   const row = render(
@@ -141,8 +147,9 @@ async function runScenario({ wasMain }) {
   );
   assert.equal(row.type, 'button', 'row is a real button');
   assert.equal(row.props.role, 'menuitem', 'row joins the menu keyboard walk');
-  assert.equal(row.props.className, 'dshds-row');
-  assert.equal(findByProp(row, 'className', 'dshds-row-label')?.props.children, '删除会话', 'row label');
+  assert.equal(row.props.className, 'dshds-item');
+  assert.ok(findByProp(row, 'className', 'dshds-item-icon'), 'row leads with the shipped trash glyph');
+  assert.equal(findByProp(row, 'className', 'dshds-item-label')?.props.children, '删除会话', 'row label');
   row.props.onClick({ preventDefault() {}, stopPropagation() {} });
   assert.equal(menuOpen, false, 'menu closes on select');
 
@@ -159,11 +166,11 @@ async function runScenario({ wasMain }) {
     'one sentence carries the session title',
   );
 
-  const buttons = childArray(findByProp(dialog, 'className', 'dshds-actions').props.children);
+  const buttons = childArray(findByProp(dialog, 'className', 'dshds-dialog-footer').props.children);
   assert.equal(buttons.length, 2, 'cancel + delete');
   assert.equal(childArray(buttons[0].props.children)[0], '取消');
   assert.equal(childArray(buttons[1].props.children)[0], '删除');
-  assert.equal(buttons[1].props.className, 'dshds-btn dshds-btn-danger', 'delete reads as destructive');
+  assert.equal(buttons[1].props.className, 'dshds-btn dshds-btn-outline dshds-btn-danger', 'delete is an outlined danger button');
 
   buttons[1].props.onClick();
   await new Promise((resolve) => setTimeout(resolve, 0));

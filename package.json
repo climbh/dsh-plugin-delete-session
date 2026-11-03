@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-delete-session",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Adds a Delete row to every session's more-options menu in the DeepSeek Harness sidebar and removes that session from this machine.",
   "license": "MIT",
   "author": "climbh",
