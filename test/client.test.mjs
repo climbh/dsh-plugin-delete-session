@@ -43,6 +43,7 @@ const DICT = {
   'menu.delete': '删除会话',
   'dialog.title': '删除会话',
   'dialog.description': '「{name}」删除后不可恢复。',
+  'dialog.close': '关闭',
   'dialog.cancel': '取消',
   'dialog.confirm': '删除',
   'dialog.deleting': '正在删除…',
@@ -155,6 +156,19 @@ async function runScenario({ wasMain }) {
 
   const dialog = render(overlay.component({ t }));
   assert.ok(dialog, 'dialog renders once the row was selected');
+  const closeButton = findByProp(dialog, 'className', 'dshds-dialog-close');
+  assert.ok(closeButton, 'close button rendered');
+  assert.equal(closeButton.props['aria-label'], '关闭');
+  const closeGlyph = render(closeButton.props.children);
+  const closePaths = childArray(closeGlyph.props.children).map((path) => path.props.d);
+  assert.equal(
+    JSON.stringify(closePaths),
+    JSON.stringify(['M3.5 3.5L12.5 12.5', 'M12.5 3.5L3.5 12.5']),
+    'close glyph is the shipped two-stroke X',
+  );
+  assert.equal(closeGlyph.props.strokeWidth, 1, 'close glyph uses the shipped 1px stroke');
+  assert.equal(closeGlyph.props.width, 14, 'close glyph is 14px');
+
   const panel = findByProp(dialog, 'className', 'dshds-dialog');
   assert.ok(panel, 'dialog panel rendered');
   assert.equal(panel.props.role, 'dialog');
