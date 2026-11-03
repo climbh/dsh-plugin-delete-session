@@ -1,0 +1,6 @@
+# dsh-plugin-delete-session: mounts the conversation-delete row and its
+# confirmation dialog in the Harness Web UI. The Host half owns the HTTP route
+# that removes a conversation's stored files.
+- insert:
+    - id: delete-session
+      name: dsh-plugin-delete-session

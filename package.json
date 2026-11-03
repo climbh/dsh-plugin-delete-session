@@ -1,0 +1,60 @@
+{
+  "name": "dsh-plugin-delete-session",
+  "version": "1.0.0",
+  "description": "Adds a Delete row to every session's more-options menu in the DeepSeek Harness sidebar and removes that session from this machine.",
+  "license": "MIT",
+  "author": "climbh",
+  "homepage": "https://github.com/climbh/dsh-plugin-delete-session#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/climbh/dsh-plugin-delete-session.git"
+  },
+  "bugs": {
+    "url": "https://github.com/climbh/dsh-plugin-delete-session/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis-plugin",
+    "delete-session",
+    "session",
+    "cleanup",
+    "sidebar"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "test"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node test/host.test.mjs && node test/client.test.mjs"
+  }
+}

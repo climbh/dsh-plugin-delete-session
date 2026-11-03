@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Delete session",
+    "description": "Adds a Delete row to every session's more-options menu and removes that session from this machine."
+  }
+}
