@@ -42,7 +42,7 @@ function makeDocument() {
 const DICT = {
   'menu.delete': '删除会话',
   'dialog.title': '删除会话',
-  'dialog.description': '「{name}」删除后不可恢复。',
+  'dialog.description': '“{name}”删除后不可恢复。',
   'dialog.close': '关闭',
   'dialog.cancel': '取消',
   'dialog.confirm': '删除',
@@ -176,7 +176,7 @@ async function runScenario({ wasMain }) {
   assert.equal(findByProp(dialog, 'id', 'dshds-delete-title')?.props.children, '删除会话');
   assert.equal(
     findByProp(dialog, 'id', 'dshds-delete-description')?.props.children,
-    '「hello」删除后不可恢复。',
+    '“hello”删除后不可恢复。',
     'one sentence carries the session title',
   );
 
