@@ -57,10 +57,14 @@ function loadClient() {
     if (id === 'react') return makeReact();
     throw new Error('unexpected require: ' + id);
   };
+  const fetches = [];
   const sandbox = {
     window: { __ModuleLoader__: { load: (definition) => { loaded = definition; } } },
     document,
-    fetch: async () => ({ ok: true, json: async () => ({ ok: true, removed: true }) }),
+    fetch: async (url, init) => {
+      fetches.push({ url, method: init?.method, body: init?.body === undefined ? undefined : JSON.parse(init.body) });
+      return { ok: true, json: async () => ({ ok: true, removed: true }) };
+    },
     console,
     setTimeout,
   };
@@ -73,7 +77,7 @@ function loadClient() {
     const value = DICT[key] ?? key;
     return params ? value.replace('{name}', params.name) : value;
   };
-  return { moduleExports, registrations, t, document };
+  return { moduleExports, registrations, t, document, fetches };
 }
 
 /** Render nested function components until a host element is reached. */
@@ -95,17 +99,18 @@ function findByProp(element, key, value) {
   return null;
 }
 
-async function runScenario({ wasMain }) {
-  const { moduleExports, registrations, t, document } = loadClient();
+async function runScenario({ view }) {
+  const { moduleExports, registrations, t, document, fetches } = loadClient();
 
   const calls = [];
   const sessions = {
-    list: { getSnapshot: () => ({ byId: { 'session-x': { retainedBy: { mainView: wasMain ? 1 : 0 } } } }) },
+    list: { getSnapshot: () => ({ byId: { 'session-x': { retainedBy: { mainView: view.retainedBy ?? 0 } } } }) },
     handleSessionRemoved: (id) => calls.push('removed:' + id),
     refresh: async () => calls.push('refresh'),
   };
   const uiWorkspace = {
-    mainReference: wasMain ? { sessionId: 'session-x' } : { sessionId: 'session-other' },
+    mainReference: view.mainReference,
+    selection: { getSnapshot: () => view.selection ?? {} },
     clearMain: () => calls.push('clearMain'),
   };
   const ctx = {
@@ -187,7 +192,7 @@ async function runScenario({ wasMain }) {
   assert.equal(buttons[1].props.className, 'dshds-btn dshds-btn-outline dshds-btn-danger', 'delete is an outlined danger button');
 
   buttons[1].props.onClick();
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 20));
 
   assert.deepEqual(
     calls.filter((call) => call.startsWith('removed:') || call === 'refresh'),
@@ -196,13 +201,38 @@ async function runScenario({ wasMain }) {
   );
   assert.equal(
     calls.includes('clearMain'),
-    wasMain,
-    wasMain ? 'main view returns to a new session' : 'another session leaves the main view alone',
+    view.expectClear,
+    view.expectClear ? 'main view returns to a new session' : 'another session leaves the main view alone',
   );
+
+  const del = fetches.find((call) => call.url === '/delete-session/delete');
+  assert.ok(del, 'delete request sent');
+  assert.deepEqual(del.body, { sessionId: 'session-x' });
+  const report = fetches.find((call) => call.url === '/delete-session/report');
+  assert.ok(report, 'diagnostics reported to the host');
+  assert.equal(report.body.wasOnScreen, view.expectClear, 'report records what the pane showed');
 }
 
-await runScenario({ wasMain: true });
+// On screen: the live reference names it.
+await runScenario({
+  view: { mainReference: { sessionId: 'session-x' }, retainedBy: 1, expectClear: true },
+});
 console.log('ok deleting the on-screen session clears the main view');
-await runScenario({ wasMain: false });
+
+// On screen through a workspace project: the reference is gone but the persisted
+// selection still names it — this is the case the workspace rows hit.
+await runScenario({
+  view: { mainReference: undefined, selection: { sessionId: 'session-x' }, expectClear: true },
+});
+console.log('ok deleting a workspace session that only the selection names clears the main view');
+
+// On screen through the retain count alone.
+await runScenario({ view: { mainReference: undefined, selection: {}, retainedBy: 1, expectClear: true } });
+console.log('ok deleting a session retained by the main view clears it');
+
+// Another session: the pane is left alone.
+await runScenario({
+  view: { mainReference: { sessionId: 'session-other' }, selection: { sessionId: 'session-other' }, expectClear: false },
+});
 console.log('ok deleting another session leaves the main view alone');
 console.log('ALL CLIENT CHECKS PASS');
