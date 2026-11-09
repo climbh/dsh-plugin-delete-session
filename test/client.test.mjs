@@ -115,8 +115,12 @@ async function runScenario({ view }) {
     clearMain: () => calls.push('clearMain'),
     ...(view.noStartSession === true ? {} : { startSession: (workspaceId) => calls.push('startSession:' + workspaceId) }),
   };
+  // `late` mimics the real boot order: this plugin loads immediately, before
+  // ui-workspace and the session controller have activated.
+  let activated = view.lateServices !== true;
+  const registry = { sessions, uiWorkspace };
   const ctx = {
-    get: (key) => ({ sessions, uiWorkspace })[key],
+    get: (key) => (activated ? registry[key] : undefined),
     effect: (fn) => { fn(); },
     locale: { register: () => () => {} },
     slots: {
@@ -128,6 +132,7 @@ async function runScenario({ view }) {
     },
   };
   moduleExports.apply(ctx);
+  activated = true;
 
   assert.equal(registrations.length, 2, 'two slot occupants');
   const overlay = registrations.find((r) => r.options.name === 'shell.overlay');
@@ -217,6 +222,8 @@ async function runScenario({ view }) {
   const report = fetches.find((call) => call.url === '/delete-session/report');
   assert.ok(report, 'diagnostics reported to the host');
   assert.equal(report.body.wasOnScreen, view.expectClear, 'report records what the pane showed');
+  assert.equal(report.body.services.uiWorkspace, true, 'report records that the service resolved');
+  assert.equal(report.body.services.startSession, view.noStartSession !== true, 'report records the navigation API');
 }
 
 // On screen: the live reference names it, and a new conversation replaces it.
@@ -248,4 +255,10 @@ await runScenario({
   view: { mainReference: { sessionId: 'session-x' }, noStartSession: true, expectClear: true },
 });
 console.log('ok the pane is cleared when the workspace cannot open a new conversation');
+
+// Services that activate after this plugin mounts must still be found.
+await runScenario({
+  view: { mainReference: { sessionId: 'session-x' }, lateServices: true, expectClear: true },
+});
+console.log('ok services resolved after mount are still used');
 console.log('ALL CLIENT CHECKS PASS');
