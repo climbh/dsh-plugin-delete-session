@@ -111,7 +111,9 @@ async function runScenario({ view }) {
   const uiWorkspace = {
     mainReference: view.mainReference,
     selection: { getSnapshot: () => view.selection ?? {} },
+    workspaces: { list: { getSnapshot: () => ({ items: [{ workspaceId: 'ws-1', sessionIds: ['session-x'] }, { workspaceId: 'ws-2', sessionIds: [] }] }) } },
     clearMain: () => calls.push('clearMain'),
+    ...(view.noStartSession === true ? {} : { startSession: (workspaceId) => calls.push('startSession:' + workspaceId) }),
   };
   const ctx = {
     get: (key) => ({ sessions, uiWorkspace })[key],
@@ -199,11 +201,15 @@ async function runScenario({ view }) {
     ['removed:session-x', 'refresh'],
     'row dropped, then list refreshed',
   );
-  assert.equal(
-    calls.includes('clearMain'),
-    view.expectClear,
-    view.expectClear ? 'main view returns to a new session' : 'another session leaves the main view alone',
-  );
+  if (view.expectClear && view.noStartSession === true) {
+    assert.ok(calls.includes('clearMain'), 'falls back to clearing when the service cannot open one');
+  } else if (view.expectClear) {
+    assert.ok(calls.includes('startSession:ws-1'), 'the workspace opens its next conversation');
+  } else {
+    assert.equal(calls.filter((call) => call.startsWith('startSession')).length, 0, 'another session leaves the main view alone');
+    assert.equal(calls.includes('clearMain'), false, 'another session does not clear the pane');
+  }
+
 
   const del = fetches.find((call) => call.url === '/delete-session/delete');
   assert.ok(del, 'delete request sent');
@@ -213,7 +219,7 @@ async function runScenario({ view }) {
   assert.equal(report.body.wasOnScreen, view.expectClear, 'report records what the pane showed');
 }
 
-// On screen: the live reference names it.
+// On screen: the live reference names it, and a new conversation replaces it.
 await runScenario({
   view: { mainReference: { sessionId: 'session-x' }, retainedBy: 1, expectClear: true },
 });
@@ -235,4 +241,11 @@ await runScenario({
   view: { mainReference: { sessionId: 'session-other' }, selection: { sessionId: 'session-other' }, expectClear: false },
 });
 console.log('ok deleting another session leaves the main view alone');
+
+// Without startSession the plugin still clears the pane instead of leaving the
+// deleted transcript mounted.
+await runScenario({
+  view: { mainReference: { sessionId: 'session-x' }, noStartSession: true, expectClear: true },
+});
+console.log('ok the pane is cleared when the workspace cannot open a new conversation');
 console.log('ALL CLIENT CHECKS PASS');
